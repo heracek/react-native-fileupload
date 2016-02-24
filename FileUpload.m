@@ -5,6 +5,7 @@
 
 #import "RCTBridgeModule.h"
 #import "RCTLog.h"
+#import "RCTUtils.h"
 
 @interface FileUpload : NSObject <RCTBridgeModule>
 @end
@@ -123,14 +124,28 @@ RCT_EXPORT_METHOD(upload:(NSDictionary *)obj callback:(RCTResponseSenderBlock)ca
 
   // send request
   [req setHTTPBody:reqBody];
-  NSHTTPURLResponse *response = nil;
-  NSData *returnData = [NSURLConnection sendSynchronousRequest:req returningResponse:&response error:nil];
-  NSInteger statusCode = [response statusCode];
-  NSString *returnString = [[NSString alloc] initWithData:returnData encoding:NSUTF8StringEncoding];
+  [NSURLConnection sendAsynchronousRequest:req
+                                     queue:[NSOperationQueue mainQueue]
+                         completionHandler:^(NSURLResponse * _Nullable response, NSData * _Nullable data, NSError * _Nullable connectionError)
+  {
+    NSHTTPURLResponse *urlResponse = (NSHTTPURLResponse *)response;
+    NSInteger statusCode = [urlResponse statusCode];
+    NSString *returnString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
 
-  NSDictionary *res=[[NSDictionary alloc] initWithObjectsAndKeys:[NSNumber numberWithInteger:statusCode],@"status",returnString,@"data",nil];
+    NSDictionary *res = @{
+      @"status": [NSNumber numberWithInteger:statusCode],
+      @"data": returnString,
+    };
 
-  callback(@[[NSNull null], res]);
+    if (connectionError) {
+      NSDictionary *extraData = @{
+        @"description": [connectionError description],
+      };
+      callback(@[RCTMakeError(@"Upload error", nil, extraData), [NSNull null]]);
+    } else {
+      callback(@[[NSNull null], res]);
+    }
+  }];
 }
 
 - (NSString *)generateBoundaryString
