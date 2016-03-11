@@ -144,11 +144,11 @@ public class FileUploadModule extends ReactContextBaseJavaModule {
 
             int serverResponseCode = connection.getResponseCode();
             String serverResponseMessage = connection.getResponseMessage();
-            if (serverResponseCode != 200) {
+            if (!((serverResponseCode >= 200) && (serverResponseCode < 400))) {
                 fileInputStream.close();
                 outputStream.flush();
                 outputStream.close();
-                callback.invoke("Error happened: " + serverResponseMessage, null);
+                callback.invoke("Error " + serverResponseCode + ": " + serverResponseMessage, null);
             } else {
                 BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream()));
                 StringBuilder sb = new StringBuilder();
@@ -175,7 +175,7 @@ public class FileUploadModule extends ReactContextBaseJavaModule {
 
 
         } catch(Exception ex) {
-            callback.invoke("Error happened: " + ex.getMessage(), null);
+            callback.invoke("Error: " + ex.getMessage(), null);
         }
     }
 }
